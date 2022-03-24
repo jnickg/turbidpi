@@ -1,0 +1,4 @@
+vim
+git
+python3-pip
+imagemagick

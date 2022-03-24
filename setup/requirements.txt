@@ -1,0 +1,11 @@
+opencv-python
+numpy
+scipy
+matplotlib
+pytest
+pytest-html
+pytest-cov
+pymongo
+pandas
+gpiozero
+picamera
