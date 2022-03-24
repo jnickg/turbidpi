@@ -1,6 +1,6 @@
-opencv-python
 numpy
 scipy
+opencv-python
 matplotlib
 pytest
 pytest-html
