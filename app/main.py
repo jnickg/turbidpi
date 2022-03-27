@@ -6,17 +6,18 @@ import signal
 import argparse
 import datetime
 import time
+from dataclasses import asdict
 # external imports
 from readchar import readchar
 import pandas as pd
 # local imports
 from fun import CONSOLE_BANNER
 from temp import read_temp
-from cam import read_frame
+from cam import read_frame, compress_for_db
 import etl
 
 LOGGING_FILE = 'mrm.log'
-LOGGING_FORMAT = '%(asctime)s [ %(levelname)s ] %(message)s'
+LOGGING_FORMAT = '%(asctime)s - %(filename)10s:%(funcName)20s [ %(levelname)10s ] %(message)s'
 LOGGING_DATE_FORMAT = '%Y/%m/%d %H:%M:%S'
 LOGGING_LEVEL = log.DEBUG
 
@@ -30,13 +31,14 @@ def exit_program(code:int = 0):
 
 def sigint_handler(signum, frame):
     print('', end='\r', flush=True)
-    log.info('SIGINT HANDLER HIT')
     confirm_msg = 'Do you really want to exit? (y/n): '
+    log.info(f'SIGINT HANDLER - GETTING USER INPUT WITH PROMPT \'{confirm_msg}\'')
     print(confirm_msg, end='', flush=True)
     res = readchar()
     print('', end='\r', flush=True)
     print(' ' * len(confirm_msg), end='', flush=True) # clears confirmation message
     print('     ', end='\r', flush=True)
+    log.info(f'USER PRESSED \'{res}\'')
     if res == 'y':
         exit_program(1)
 
@@ -46,21 +48,17 @@ def main():
     # TODO add arguments :-)
     args = parser.parse_args()
 
-    df = pd.DataFrame(columns = etl.DATAFRAME_COLUMNS)
-    log.info('Created empty DataFrame. Beginning primary work loop...')
-
+    log.info('Beginning primary work loop...')
     while True:
-        ct = datetime.datetime.now()
+        new_readings = etl.Readings()
         temp_c, _ = read_temp()
         frame = read_frame()
-        frame_w, frame_h, _ = frame.shape
-        log.debug(f'{ct} READINGS - temp:{temp_c} frame_w:{frame_w} frame_h:{frame_h}')
-        pd.concat([df, pd.DataFrame({
-            etl.TIMESTAMP_COL: [ct],
-            etl.TEMP_C_COL: [temp_c],
-            etl.FRAME_W_COL: [frame_w],
-            etl.FRAME_H_COL: [frame_h],
-        })])
+        frame_h, frame_w, _ = frame.shape
+        img_data = compress_for_db(frame)
+
+        new_readings.temp_c = temp_c
+        new_readings.image = img_data
+        log.info(f'New readings: {new_readings}')
         time.sleep(15.0)
 
 

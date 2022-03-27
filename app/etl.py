@@ -1,13 +1,10 @@
-TIMESTAMP_COL = 'TIMESTAMP'
-TIMESTAMP_IDX = 0
+from dataclasses import dataclass, field
+from datetime import datetime
 
-TEMP_C_COL = 'TEMP_C'
-TEMP_C_IDX = 1
+import const
 
-FRAME_W_COL = 'FRAME_W'
-FRAME_W_IDX = 2
-
-FRAME_H_COL = 'FRAME_H'
-FRAME_H_IDX = 3
-
-DATAFRAME_COLUMNS = [TIMESTAMP_COL, TEMP_C_COL, FRAME_W_COL, FRAME_H_COL]
+@dataclass
+class Readings:
+	timestamp : datetime = field(default_factory=lambda: datetime.strftime(datetime.now(), const.DB_DATE_FORMAT))
+	temp_c : float  = field(default=float('nan'))
+	image : bytearray = field(default_factory=bytearray, repr=False)
