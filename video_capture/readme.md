@@ -7,6 +7,11 @@
 5. ????
 6. Profit!
 
+## Set up auto whitebalance 
+1. `sudo vim /boot/config.txt`  
+2. Add the following line:  
+	`awb_auto_is_greyworld=1`
+
 # TODO
 * Figure out why openCV doesn't run. Getting an error with numpy, shown below
 ```
