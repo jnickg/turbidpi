@@ -1,29 +1,64 @@
 import os
 import io
 import logging as log
+import time
+import threading
+import subprocess
 
 import cv2 as cv
 import numpy as np
 
 import picamera
 
-vid = cv.VideoCapture(0)
-vid.set(cv.CAP_PROP_FRAME_WIDTH, 1920)
-vid.set(cv.CAP_PROP_FRAME_HEIGHT, 1080)
+from timer import Timer
 
-DOWNSAMPLE_W = 480
-DOWNSAMPLE_H = 270
+
+vid_settings_lock = threading.RLock()
+vid = None
+
+
+
+
+def _set_property_v4l2(property, value):
+    global vid_settings_lock
+    with vid_settings_lock:
+        try:
+            subprocess.call(['sudo', 'v4l2-ctl', '-c', f'{property}={value}'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL)
+            log.info(f'Set camera property: {property} to value: {value}')
+        except Exception as e:
+            log.exception(e)
+            log.error(f'Failed to set camera property: {property} to value: {value}')
+
+def _get_property_v4l2(property):
+    result = None
+    global vid_settings_lock
+    with vid_settings_lock:
+        try:
+            result = subprocess.check_output(['v4l2-ctl', '-C', f'{property}'])
+            result = result.decode('utf-8').split()[1]
+        except Exception as e:
+            log.exception(e)
+            log.error(f'Failed to get value of camera property: {property}')
+    return result
+
+class CameraSettings:
+    pass # TODO make properties for each setting we like
+
+
+
+def init_camera(reinit:bool=False):
+    global vid
+    global vid_settings_lock
+    with vid_settings_lock:
+        if reinit or vid is None:
+            vid = cv.VideoCapture(0)
+            vid.set(cv.CAP_PROP_FRAME_WIDTH, 1920)
+            vid.set(cv.CAP_PROP_FRAME_HEIGHT, 1080)
 
 def read_frame() -> np.ndarray:
-    cap, frame = vid.read()
+    init_camera()
+    with Timer('read_frame'):
+        _, frame = vid.read()
     return frame
-
-def compress_for_db(frame:np.ndarray) -> bytearray:
-    pre_bytes = frame.nbytes
-    small_frame = cv.resize(frame, (DOWNSAMPLE_H, DOWNSAMPLE_W), interpolation = cv.INTER_LANCZOS4)
-    _, jpeg_frame = cv.imencode('.jpg', small_frame, [cv.IMWRITE_JPEG_QUALITY, 75])
-    buffer = io.BytesIO(jpeg_frame)
-    out_bytes = buffer.read()
-    post_bytes = len(out_bytes)
-    log.debug(f'Compressed {pre_bytes}b → {post_bytes}b')
-    return out_bytes

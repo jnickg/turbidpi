@@ -12,9 +12,8 @@ from readchar import readchar
 import pandas as pd
 # local imports
 from fun import CONSOLE_BANNER
-from temp import read_temp
-from cam import read_frame, compress_for_db
-import etl
+import const
+import dvc
 
 LOGGING_FILE = 'mrm.log'
 LOGGING_FORMAT = '%(asctime)s - %(filename)10s:%(funcName)20s [ %(levelname)10s ] %(message)s'
@@ -25,7 +24,7 @@ def deinit_systems():
     pass
 
 def exit_program(code:int = 0):
-    log.info('Exiting...')
+    log.info(f'Exiting (code = {code})...')
     deinit_systems()
     sys.exit(code)
 
@@ -45,21 +44,25 @@ def sigint_handler(signum, frame):
 
 def main():
     parser = argparse.ArgumentParser()
-    # TODO add arguments :-)
+    parser.add_argument('--config', '-c', help='Launch %(prog)s as one of \''+const.CONFIG_DEVICE+'\' (device), \''+const.CONFIG_REST+'\' (REST backend), or \''+const.CONFIG_WEB+'\' (frontend server)', type=str, default=const.CONFIG_DEVICE, choices=[const.CONFIG_DEVICE, const.CONFIG_REST, const.CONFIG_WEB])
     args = parser.parse_args()
 
-    log.info('Beginning primary work loop...')
-    while True:
-        new_readings = etl.Readings()
-        temp_c, _ = read_temp()
-        frame = read_frame()
-        frame_h, frame_w, _ = frame.shape
-        img_data = compress_for_db(frame)
+    log.info(f'Launching with system configuration: {args.config}...')
+    if args.config == const.CONFIG_DEVICE:
+        dvc.main()
+    elif args.config == const.CONFIG_REST:
+        pass
+    elif args.config == const.CONFIG_WEB:
+        pass
+    else:
+        # Shouldn't be hit with above "choices" on argument, but it's more maintainble to leave
+        # this here, just in case.
+        log.error(f'Invalid value for --config argument: {args.config}.')
+        parser.print_help()
+        exit_program(-1)
 
-        new_readings.temp_c = temp_c
-        new_readings.image = img_data
-        log.info(f'New readings: {new_readings}')
-        time.sleep(15.0)
+    # We got to the end without an error
+    exit_program(0)
 
 
 if __name__ == '__main__':
